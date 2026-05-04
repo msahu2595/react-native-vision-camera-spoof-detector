@@ -2,6 +2,7 @@ package com.margelo.nitro.com.faceantispoof
 
 import android.util.Log
 import androidx.annotation.Keep
+import androidx.camera.core.ImageProxy
 import com.facebook.proguard.annotations.DoNotStrip
 import com.faceantispoof.FaceAntiSpoofManager
 import com.margelo.nitro.camera.HybridFrameSpec

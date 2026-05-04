@@ -131,6 +131,9 @@ dependencies {
     // AndroidX - EXIF Support for image orientation
     implementation "androidx.exifinterface:exifinterface:1.3.6"
 
+    // CameraX core (required for NativeFrame.image -> ImageProxy)
+    implementation "androidx.camera:camera-core:1.3.4"
+
     // Vision Camera v5 (Nitro Modules)
     implementation project(':react-native-vision-camera')
 
