@@ -4,7 +4,6 @@ project(FaceAntiSpoofDetector)
 set(SOURCE_FILES
     FastYuvJni.cpp
     fast_yuv.cpp
-    JNIOnLoad.cpp
 )
 
 add_library(FaceAntiSpoofDetector SHARED ${SOURCE_FILES})
@@ -58,5 +57,8 @@ if (EXISTS ${NITROGEN_DIR}/FaceAntiSpoofDetector+autolinking.cmake)
 else()
     message(WARNING "Nitrogen autolinking cmake not found at ${NITROGEN_DIR}/FaceAntiSpoofDetector+autolinking.cmake - run 'npx nitrogen' first")
 endif()
+
+# JNI_OnLoad registration for Nitro HybridObjects (compiled after autolinking so fbjni includes are available)
+target_sources(FaceAntiSpoofDetector PRIVATE JNIOnLoad.cpp)
 
 
