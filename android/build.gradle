@@ -24,6 +24,10 @@ apply from: '../nitrogen/generated/android/FaceAntiSpoofDetector+autolinking.gra
 android {
     compileSdkVersion rootProject.ext.compileSdkVersion
 
+    buildFeatures {
+        prefab true
+    }
+
     defaultConfig {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
