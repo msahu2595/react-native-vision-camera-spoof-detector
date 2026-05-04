@@ -14,12 +14,6 @@ class FaceAntiSpoofModule(reactContext: ReactApplicationContext) : ReactContextB
     }
 
     init {
-        try {
-            System.loadLibrary("fastyuv")
-        } catch (e: Exception) {
-            android.util.Log.e("FaceAntiSpoof", "Error loading fastyuv native library", e)
-        }
-
         // Initialize shared manager
         FaceAntiSpoofManager.initialize(reactContext.assets)
     }

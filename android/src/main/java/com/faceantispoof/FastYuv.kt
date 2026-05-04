@@ -3,7 +3,7 @@ package com.faceantispoof
 @Suppress("unused")
 object FastYuv {
     init {
-        System.loadLibrary("fastyuv")
+        System.loadLibrary("FaceAntiSpoofDetector")
     }
 
     @JvmStatic
