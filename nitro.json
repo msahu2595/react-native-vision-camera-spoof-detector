@@ -1,0 +1,23 @@
+{
+  "name": "FaceAntiSpoofDetector",
+  "cxxNamespace": ["faceantispoof"],
+  "ios": {
+    "iosModuleName": "FaceAntiSpoofDetector"
+  },
+  "android": {
+    "androidNamespace": ["com", "faceantispoof"],
+    "androidCxxLibName": "FaceAntiSpoofDetector"
+  },
+  "autolinking": {
+    "FaceAntiSpoofPlugin": {
+      "ios": {
+        "language": "swift",
+        "implementationClassName": "HybridFaceAntiSpoofPlugin"
+      },
+      "android": {
+        "language": "kotlin",
+        "implementationClassName": "HybridFaceAntiSpoofPlugin"
+      }
+    }
+  }
+}

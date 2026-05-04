@@ -19,11 +19,14 @@ High-performance face anti-spoofing and liveness detection module for React Nati
 
 ## 📋 Requirements
 
-- React Native >= 0.60.0
-- react-native-vision-camera >= 4.6.4
-- react-native-reanimated >= 3.0.0
-- react-native-worklets-core >= 1.0.0
+- React Native >= 0.78.0 (New Architecture / Fabric)
+- react-native-vision-camera >= 5.0.0
+- react-native-reanimated >= 4.0.0
+- react-native-worklets >= 0.8.0
+- react-native-nitro-modules (auto-installed with VisionCamera v5)
 - react-native-vision-camera-face-detector (optional, for enhanced features)
+
+> **Breaking Change in v2.0.0**: This version requires VisionCamera v5 and Reanimated v4. If you need VisionCamera v4 support, stay on `react-native-vision-camera-spoof-detector@^1.0.0`.
 
 ## 📦 Installation
 
@@ -38,9 +41,23 @@ yarn add react-native-vision-camera-spoof-detector
 ### Step 2: Install peer dependencies
 
 ```bash
-npm install react-native-vision-camera react-native-reanimated react-native-worklets-core
+npm install react-native-vision-camera react-native-reanimated react-native-worklets react-native-vision-camera-worklets
 # or
-yarn add react-native-vision-camera react-native-reanimated react-native-worklets-core
+yarn add react-native-vision-camera react-native-reanimated react-native-worklets react-native-vision-camera-worklets
+```
+
+### Step 2b: Configure Babel
+
+Add the Worklets Babel plugin to your `babel.config.js`:
+
+```js
+module.exports = {
+  presets: ['module:metro-react-native-babel-preset'],
+  plugins: [
+    'react-native-worklets/plugin',
+    // ... other plugins
+  ],
+};
 ```
 
 ### Step 3: Configure Android (if not auto-linked)
@@ -53,10 +70,13 @@ dependencies {
 }
 ```
 
-### Step 4: Link native module (for React Native < 0.60)
+### Step 4: Rebuild native code
 
 ```bash
-react-native link react-native-vision-camera-spoof-detector
+npx expo prebuild --clean
+# or for bare React Native:
+cd android && ./gradlew clean && cd ..
+npx react-native run-android
 ```
 
 ## 🚀 Quick Start
@@ -66,13 +86,12 @@ react-native link react-native-vision-camera-spoof-detector
 ```javascript
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Camera, useCameraDevices, useFrameProcessor } from 'react-native-vision-camera';
+import { Camera, useCameraDevice, useFrameOutput } from 'react-native-vision-camera';
 import { faceAntiSpoofFrameProcessor, initializeFaceAntiSpoof } from 'react-native-vision-camera-spoof-detector';
-import { runOnJS } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 export default function App() {
-  const devices = useCameraDevices();
-  const device = devices.front;
+  const device = useCameraDevice('front');
   const [spoofResult, setSpoofResult] = useState(null);
 
   useEffect(() => {
@@ -81,13 +100,16 @@ export default function App() {
     });
   }, []);
 
-  const frameProcessor = useFrameProcessor((frame) => {
-    'worklet';
-    const result = faceAntiSpoofFrameProcessor(frame);
-    if (result) {
-      runOnJS(setSpoofResult)(result);
-    }
-  }, []);
+  const frameOutput = useFrameOutput({
+    onFrame(frame) {
+      'worklet';
+      const result = faceAntiSpoofFrameProcessor(frame);
+      if (result) {
+        scheduleOnRN(setSpoofResult, result);
+      }
+      frame.dispose();
+    },
+  });
 
   if (device == null) return <Text>Loading...</Text>;
 
@@ -97,8 +119,7 @@ export default function App() {
         style={StyleSheet.absoluteFill}
         device={device}
         isActive={true}
-        frameProcessor={frameProcessor}
-        frameProcessorFps={5}
+        outputs={[frameOutput]}
       />
       {spoofResult && (
         <View style={styles.resultContainer}>
@@ -138,10 +159,12 @@ const styles = StyleSheet.create({
 
 ### Advanced Usage with Full Feature Set
 
+> **Note**: The `react-native-vision-camera-face-detector` plugin must also support VisionCamera v5 for this example to work. If it does not yet have a v5 release, use the Simple Usage example above.
+
 ```javascript
 import { useCallback, useMemo, useEffect, useRef } from 'react';
-import { Worklets } from 'react-native-worklets-core';
-import { useFrameProcessor } from 'react-native-vision-camera';
+import { useSharedValue } from 'react-native-reanimated';
+import { useFrameOutput } from 'react-native-vision-camera';
 import { useFaceDetector } from 'react-native-vision-camera-face-detector';
 import {
   faceAntiSpoofFrameProcessor,
@@ -189,33 +212,29 @@ const useFaceDetectionFrameProcessor = ({
     initializeAntiSpoof();
   }, [initializeAntiSpoof]);
 
-  // Shared state for face tracking
-  const sharedState = useMemo(
-    () =>
-      Worklets.createSharedValue({
-        flags: {
-          captured: false,
-          showCodeScanner: showCodeScanner,
-          isActive: isActive,
-          hasSingleFace: false,
-          isFaceCentered: false,
-        },
-        antiSpoof: {
-          isLive: false,
-          confidence: 0,
-          consecutiveLiveFrames: 0,
-        },
-      }),
-    []
-  );
+  // Shared state for face tracking (Reanimated v4 shared values)
+  const sharedState = useSharedValue({
+    flags: {
+      captured: false,
+      showCodeScanner: showCodeScanner,
+      isActive: isActive,
+      hasSingleFace: false,
+      isFaceCentered: false,
+    },
+    antiSpoof: {
+      isLive: false,
+      confidence: 0,
+      consecutiveLiveFrames: 0,
+    },
+  });
 
-  const frameProcessor = useFrameProcessor(
-    (frame) => {
+  const frameOutput = useFrameOutput({
+    onFrame(frame) {
       'worklet';
-      
+
       try {
         const detected = detectFaces?.(frame);
-        
+
         if (!detected || detected.length === 0) {
           onFacesUpdate?.({ count: 0, progress: 0 });
           return;
@@ -223,7 +242,7 @@ const useFaceDetectionFrameProcessor = ({
 
         if (detected.length === 1 && !sharedState.value.flags.captured) {
           const antiSpoofResult = faceAntiSpoofFrameProcessor?.(frame);
-          
+
           if (antiSpoofResult?.isLive) {
             sharedState.value.antiSpoof.isLive = true;
             sharedState.value.antiSpoof.confidence = antiSpoofResult.combinedScore;
@@ -232,7 +251,7 @@ const useFaceDetectionFrameProcessor = ({
               confidence: antiSpoofResult.combinedScore,
             });
           }
-          
+
           onFacesUpdate?.({ count: 1, progress: 50 });
         } else {
           onFacesUpdate?.({ count: detected.length, progress: 0 });
@@ -240,14 +259,13 @@ const useFaceDetectionFrameProcessor = ({
       } catch (err) {
         console.error('Frame processing error:', err);
       } finally {
-        frame.release?.();
+        frame.dispose();
       }
     },
-    [detectFaces, isLoading]
-  );
+  });
 
   return {
-    frameProcessor,
+    frameOutput,
     sharedState,
     initializeAntiSpoof,
   };

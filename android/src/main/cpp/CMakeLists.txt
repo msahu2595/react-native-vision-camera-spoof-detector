@@ -1,5 +1,4 @@
-cmake_minimum_required(VERSION 3.4.1)
-
+cmake_minimum_required(VERSION 3.18)
 project(fastyuv)
 
 set(SOURCE_FILES
@@ -16,7 +15,7 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "armv7" OR CMAKE_SYSTEM_PROCESSOR MATCHES "aar
         -fPIC
         -O3
     )
-    
+
     # ARM-specific NEON enablement (clang doesn't support -march=native for cross-compilation)
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "armv7")
         # ARMv7 with NEON (32-bit ARM)
@@ -43,59 +42,24 @@ if (EXISTS ${CMAKE_SOURCE_DIR}/libyuv/CMakeLists.txt)
     endif()
 endif()
 
-# 支持 Android 15+ 的 16KB 页面大小
+# Support Android 15+ 16KB page size
 # https://developer.android.com/guide/practices/page-sizes
 target_link_options(fastyuv PRIVATE "-Wl,-z,max-page-size=16384")
 
 # Android log
 find_library(log-lib log)
 target_link_libraries(fastyuv PRIVATE ${log-lib})
-cmake_minimum_required(VERSION 3.18)
-project(faceantispoof)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+# VisionCamera v5 prefab (for HybridFrameSpec/NativeFrame access)
+find_package(react-native-vision-camera REQUIRED CONFIG)
+target_link_libraries(fastyuv PRIVATE react-native-vision-camera::VisionCamera)
 
-get_filename_component(CMAKE_SOURCE_ABS "${CMAKE_SOURCE_DIR}" ABSOLUTE)
-# .../react-native-vision-camera-spoof-detector/android/src/main/cpp -> ../../../.. = .../node_modules
-get_filename_component(PARENT_1 "${CMAKE_SOURCE_ABS}/.." ABSOLUTE)  # main
-get_filename_component(PARENT_2 "${PARENT_1}/.." ABSOLUTE)  # src
-get_filename_component(PARENT_3 "${PARENT_2}/.." ABSOLUTE)  # android
-get_filename_component(PARENT_4 "${PARENT_3}/.." ABSOLUTE)  # react-native-vision-camera-spoof-detector
-get_filename_component(NODE_MODULES_ABS "${PARENT_4}/.." ABSOLUTE)  # node_modules
-
-set(REACT_NATIVE_DIR "${NODE_MODULES_ABS}/react-native")
-set(REACT_COMMON_DIR "${REACT_NATIVE_DIR}/ReactCommon")
-
-message(STATUS "NODE_MODULES_ABS: ${NODE_MODULES_ABS}")
-message(STATUS "REACT_NATIVE_DIR: ${REACT_NATIVE_DIR}")
-message(STATUS "REACT_COMMON_DIR: ${REACT_COMMON_DIR}")
-
-# Compile JSI implementation
-file(GLOB JSI_CPP "${REACT_COMMON_DIR}/jsi/jsi/jsi.cpp")
-
-add_library(faceantispoof SHARED FaceAntiSpoofJSI.cpp ${JSI_CPP})
-
-target_include_directories(faceantispoof PRIVATE
-    "${REACT_COMMON_DIR}/jsi"
-    "${REACT_COMMON_DIR}/cxxreact"
-    "${REACT_COMMON_DIR}/callinvoker/ReactCommon"
-    "${REACT_COMMON_DIR}/runtimeexecutor/ReactCommon"
-    "${REACT_COMMON_DIR}"
-)
-
-find_library(log-lib log)
-
-# 支持 Android 15+ 的 16KB 页面大小
-target_link_options(faceantispoof PRIVATE "-Wl,-z,max-page-size=16384")
-
-target_link_libraries(
-    faceantispoof
-    "${log-lib}"
-    c++_shared
-    atomic
-    m
-)
+# Nitrogen autolinking - includes generated C++ sources and sets up HybridObject targets
+get_filename_component(NITROGEN_DIR "${CMAKE_SOURCE_DIR}/../../../nitrogen/generated/android" ABSOLUTE)
+if (EXISTS ${NITROGEN_DIR}/FaceAntiSpoofDetector+autolinking.cmake)
+    include(${NITROGEN_DIR}/FaceAntiSpoofDetector+autolinking.cmake)
+else()
+    message(WARNING "Nitrogen autolinking cmake not found at ${NITROGEN_DIR}/FaceAntiSpoofDetector+autolinking.cmake - run 'npx nitrogen' first")
+endif()
 
 

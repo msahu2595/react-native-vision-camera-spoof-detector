@@ -13,6 +13,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - TensorFlow Lite model optimization
 - Custom model support
 
+## [2.0.0] - 2025-05-04
+
+### Breaking Changes
+- **VisionCamera v5 required**: Upgraded from VisionCamera v4 to v5. The plugin architecture changed from JSI FrameProcessorPlugin to Nitro HybridObject.
+- **Reanimated v4 required**: Updated peer dependency from Reanimated v3 to v4.
+- **Worklets package changed**: Replaced `react-native-worklets-core` with `react-native-worklets` (Software Mansion's official worklets package).
+- **Babel plugin changed**: Update `babel.config.js` from `react-native-reanimated/plugin` to `react-native-worklets/plugin`.
+- **Frame Processor API changed**: Consumers must now use `useFrameOutput` instead of `useFrameProcessor`, and `frame.dispose()` instead of `frame.release()`.
+- **JSI bridge removed**: The old `FaceAntiSpoofJSI.cpp` and `FaceAntiSpoofFrameProcessor.kt` (v4 plugin) have been removed. The plugin is now a Nitro HybridObject.
+- **Native module simplified**: Removed `install()` bridge method. Use `NitroModules.createHybridObject('FaceAntiSpoofPlugin')` to access the plugin directly.
+
+### Added
+- Nitro Module spec (`src/specs/FaceAntiSpoof.nitro.ts`) for type-safe native plugin interface.
+- `HybridFaceAntiSpoofPlugin.kt`: New Nitro HybridObject implementation for VisionCamera v5.
+- `FaceAntiSpoofManager.kt`: Shared singleton manager so the Nitro plugin and bridge module share one TFLite model instance.
+
+### Changed
+- `android/build.gradle`: Removed `react-native-worklets-core` dependency, added `react-native-nitro-modules`.
+- `CMakeLists.txt`: Removed old `faceantispoof` JSI library target; `fastyuv` C++ library is retained.
+- `index.js`: Uses `NitroModules.createHybridObject('FaceAntiSpoofPlugin')` instead of `VisionCameraProxy.initFrameProcessorPlugin()`.
+- `README.md`: Updated all examples and requirements for v5 ecosystem.
+
+### Migration Guide (1.x -> 2.0.0)
+1. Upgrade dependencies:
+   ```bash
+   npm install react-native-vision-camera@^5.0.0 react-native-reanimated@^4.0.0 react-native-worklets@^0.8.0 react-native-vision-camera-worklets
+   ```
+2. Update `babel.config.js`:
+   ```js
+   plugins: ['react-native-worklets/plugin']
+   ```
+3. Replace `useFrameProcessor` with `useFrameOutput` in your camera component.
+4. Replace `frame.release()` with `frame.dispose()` inside the worklet.
+5. Replace `runOnJS` from Reanimated with `scheduleOnRN` from `react-native-worklets`.
+
 ## [1.0.18] - 2024-03-24
 
 ### Added

@@ -13,77 +13,15 @@ class FaceAntiSpoofModule(reactContext: ReactApplicationContext) : ReactContextB
         const val NAME = "FaceAntiSpoof"
     }
 
-    private var faceAntiSpoofing: FaceAntiSpoofingAdvanced? = null
-    private var isModuleInitialized = false
-
     init {
         try {
-            System.loadLibrary("faceantispoof")
+            System.loadLibrary("fastyuv")
         } catch (e: Exception) {
-            android.util.Log.e("FaceAntiSpoof", "Error loading native library", e)
+            android.util.Log.e("FaceAntiSpoof", "Error loading fastyuv native library", e)
         }
 
-        try {
-            // Initialize face anti-spoofing with app assets
-            faceAntiSpoofing = FaceAntiSpoofingAdvanced(reactContext.assets)
-            isModuleInitialized = true
-            android.util.Log.i("FaceAntiSpoof", "Face anti-spoofing initialized successfully")
-        } catch (e: Exception) {
-            android.util.Log.e("FaceAntiSpoof", "Failed to initialize face anti-spoofing: ${e.message}", e)
-            isModuleInitialized = false
-        }
-
-        try {
-            tryRegisterJSI()
-        } catch (e: Exception) {
-            android.util.Log.e("FaceAntiSpoof", "Error starting JSI registration", e)
-        }
-    }
-
-    private fun tryRegisterJSI() {
-        try {
-            Thread {
-                try {
-                    Thread.sleep(500)
-                    val holder = reactApplicationContext.javaScriptContextHolder ?: return@Thread
-
-                    // Try nativePointer
-                    try {
-                        val field = holder.javaClass.getDeclaredField("nativePointer")
-                        field.isAccessible = true
-                        val jsContextPtr = field.getLong(holder)
-                        if (jsContextPtr != 0L) {
-                            try {
-                                registerJSIFunction(jsContextPtr)
-                            } catch (e: Exception) {
-                                android.util.Log.d("FaceAntiSpoof", "JSI registration not available: ${e.message}")
-                            }
-                            return@Thread
-                        }
-                    } catch (_: Exception) { }
-
-                    // Try mContext
-                    try {
-                        val field = holder.javaClass.getDeclaredField("mContext")
-                        field.isAccessible = true
-                        val jsContextPtr = field.getLong(holder)
-                        if (jsContextPtr != 0L) {
-                            try {
-                                registerJSIFunction(jsContextPtr)
-                            } catch (e: Exception) {
-                                android.util.Log.d("FaceAntiSpoof", "JSI registration not available: ${e.message}")
-                            }
-                            return@Thread
-                        }
-                    } catch (_: Exception) { }
-
-                } catch (e: Exception) {
-                    android.util.Log.d("FaceAntiSpoof", "Error in JSI registration thread: ${e.message}")
-                }
-            }.start()
-        } catch (e: Exception) {
-            android.util.Log.d("FaceAntiSpoof", "Failed to start thread for JSI registration: ${e.message}")
-        }
+        // Initialize shared manager
+        FaceAntiSpoofManager.initialize(reactContext.assets)
     }
 
     override fun getName(): String = NAME
@@ -91,19 +29,8 @@ class FaceAntiSpoofModule(reactContext: ReactApplicationContext) : ReactContextB
     @ReactMethod
     fun initialize(promise: Promise) {
         try {
-            if (!isModuleInitialized) {
-                // Try to initialize now if not done in init()
-                try {
-                    faceAntiSpoofing = FaceAntiSpoofingAdvanced(reactApplicationContext.assets)
-                    isModuleInitialized = true
-                    android.util.Log.i("FaceAntiSpoof", "Face anti-spoofing initialized in initialize()")
-                } catch (e: Exception) {
-                    android.util.Log.e("FaceAntiSpoof", "Failed to initialize face anti-spoofing: ${e.message}", e)
-                    promise.reject("INIT_ERROR", "Failed to initialize face anti-spoof: ${e.message}", e)
-                    return
-                }
-            }
-            promise.resolve(isModuleInitialized)
+            val success = FaceAntiSpoofManager.initialize(reactApplicationContext.assets)
+            promise.resolve(success)
         } catch (e: Exception) {
             android.util.Log.e("FaceAntiSpoof", "initialize() error", e)
             promise.reject("INIT_ERROR", "Failed to initialize face anti-spoof", e)
@@ -113,11 +40,11 @@ class FaceAntiSpoofModule(reactContext: ReactApplicationContext) : ReactContextB
     @ReactMethod
     fun checkModelStatus(promise: Promise) {
         try {
-            val isInitialized = isModuleInitialized && faceAntiSpoofing?.isInitialized() == true
+            val isInitialized = FaceAntiSpoofManager.isReady()
             val result = mapOf(
                 "pluginAvailable" to isInitialized,
                 "modelLoaded" to isInitialized,
-                "moduleInitialized" to isModuleInitialized
+                "moduleInitialized" to isInitialized
             )
             promise.resolve(com.facebook.react.bridge.Arguments.makeNativeMap(result))
         } catch (e: Exception) {
@@ -129,8 +56,7 @@ class FaceAntiSpoofModule(reactContext: ReactApplicationContext) : ReactContextB
     @ReactMethod
     fun isAvailable(promise: Promise) {
         try {
-            val available = isModuleInitialized && faceAntiSpoofing?.isInitialized() == true
-            promise.resolve(available)
+            promise.resolve(FaceAntiSpoofManager.isReady())
         } catch (e: Exception) {
             android.util.Log.e("FaceAntiSpoof", "isAvailable() error", e)
             promise.reject("AVAIL_ERROR", "Failed to check availability", e)
@@ -162,60 +88,9 @@ class FaceAntiSpoofModule(reactContext: ReactApplicationContext) : ReactContextB
     }
 
     @ReactMethod
-    fun install(promise: Promise) {
-        try {
-            val holder = reactApplicationContext.javaScriptContextHolder
-
-            if (holder != null) {
-                // Try nativePointer
-                try {
-                    val f = holder.javaClass.getDeclaredField("nativePointer")
-                    f.isAccessible = true
-                    val ptr = f.getLong(holder)
-                    if (ptr != 0L) {
-                        try {
-                            registerJSIFunction(ptr)
-                            promise.resolve(true)
-                            return
-                        } catch (e: Exception) {
-                            android.util.Log.d("FaceAntiSpoof", "JSI not available: ${e.message}")
-                        }
-                    }
-                } catch (_: Exception) {}
-
-                // Try mContext
-                try {
-                    val f = holder.javaClass.getDeclaredField("mContext")
-                    f.isAccessible = true
-                    val ptr = f.getLong(holder)
-                    if (ptr != 0L) {
-                        try {
-                            registerJSIFunction(ptr)
-                            promise.resolve(true)
-                            return
-                        } catch (e: Exception) {
-                            android.util.Log.d("FaceAntiSpoof", "JSI not available: ${e.message}")
-                        }
-                    }
-                } catch (_: Exception) {}
-
-                promise.resolve(false)
-            } else {
-                promise.resolve(false)
-            }
-
-        } catch (e: Exception) {
-            android.util.Log.e("FaceAntiSpoof", "install() error", e)
-            promise.reject("INSTALL_ERROR", "Failed to install JSI function", e)
-        }
-    }
-
-    @ReactMethod
     fun cleanup(promise: Promise) {
         try {
-            faceAntiSpoofing?.close()
-            faceAntiSpoofing = null
-            isModuleInitialized = false
+            FaceAntiSpoofManager.cleanup()
             android.util.Log.i("FaceAntiSpoof", "Cleanup completed")
             promise.resolve(true)
         } catch (e: Exception) {
@@ -225,11 +100,8 @@ class FaceAntiSpoofModule(reactContext: ReactApplicationContext) : ReactContextB
     }
 
     override fun onCatalystInstanceDestroy() {
-        // Cleanup when React Native is shutting down
         try {
-            faceAntiSpoofing?.close()
-            faceAntiSpoofing = null
-            isModuleInitialized = false
+            FaceAntiSpoofManager.cleanup()
             android.util.Log.i("FaceAntiSpoof", "onCatalystInstanceDestroy cleanup completed")
         } catch (e: Exception) {
             android.util.Log.e("FaceAntiSpoof", "Error in onCatalystInstanceDestroy", e)
@@ -237,6 +109,4 @@ class FaceAntiSpoofModule(reactContext: ReactApplicationContext) : ReactContextB
         super.onCatalystInstanceDestroy()
     }
 
-    // Native JSI registration - optional, may not be available
-    private external fun registerJSIFunction(jsContext: Long)
 }

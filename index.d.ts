@@ -4,7 +4,7 @@
  * TypeScript type definitions
  */
 
-import type { Frame, FrameProcessor } from 'react-native-vision-camera';
+import type { Frame } from 'react-native-vision-camera';
 import type { SharedValue } from 'react-native-reanimated';
 
 // ============================================================================
@@ -50,6 +50,12 @@ export interface FaceAntiSpoofingResult {
    * Provides robust detection by ensemble voting
    */
   combinedScore: number;
+
+  /**
+   * Confidence score for the liveness prediction
+   * Range: 0.0 to 1.0
+   */
+  confidence: number;
 
   /**
    * Error message if detection failed
@@ -240,9 +246,9 @@ export interface UseFaceDetectionFrameProcessorOptions {
  */
 export interface UseFaceDetectionFrameProcessorReturn {
   /**
-   * Frame processor function for Vision Camera
+   * Frame output options for Vision Camera v5
    */
-  frameProcessor: FrameProcessor;
+  frameOutput: any;
 
   /**
    * Reset capture state to initial values
@@ -291,13 +297,16 @@ export interface UseFaceDetectionFrameProcessorReturn {
  * 
  * @example
  * ```typescript
- * const frameProcessor = useFrameProcessor((frame) => {
- *   'worklet';
- *   const result = faceAntiSpoofFrameProcessor(frame);
- *   if (result?.isLive) {
- *     // Face is live
+ * const frameOutput = useFrameOutput({
+ *   onFrame(frame) {
+ *     'worklet';
+ *     const result = faceAntiSpoofFrameProcessor(frame);
+ *     if (result?.isLive) {
+ *       // Face is live
+ *     }
+ *     frame.dispose();
  *   }
- * }, []);
+ * });
  * ```
  * 
  * @param frame - Vision Camera frame object
@@ -428,10 +437,6 @@ export interface FaceAntiSpoofModule {
    */
   getModuleInfo(): Promise<ModuleInfo>;
 
-  /**
-   * Install/setup native dependencies
-   */
-  install(): Promise<boolean>;
 }
 
 /**

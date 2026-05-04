@@ -1,11 +1,17 @@
 ﻿import { NativeModules } from 'react-native';
-import { VisionCameraProxy } from 'react-native-vision-camera';
+import { NitroModules } from 'react-native-nitro-modules';
 
 const { FaceAntiSpoof } = NativeModules;
 
-const _faceAntiSpoofPlugin = VisionCameraProxy.initFrameProcessorPlugin('faceAntiSpoof', {});
+// Create the Nitro HybridObject plugin instance (VisionCamera v5)
+let _faceAntiSpoofPlugin = null;
+try {
+  _faceAntiSpoofPlugin = NitroModules.createHybridObject('FaceAntiSpoofPlugin');
+} catch (e) {
+  console.warn('[FaceAntiSpoof] Failed to create Nitro plugin:', e);
+}
 
-// Worklet called by VisionCamera
+// Worklet called by VisionCamera v5 useFrameOutput
 export const faceAntiSpoofFrameProcessor = function (frame) {
   'worklet';
   try {
@@ -50,20 +56,17 @@ export const initializeFaceAntiSpoof = async () => {
     if (!FaceAntiSpoof) {
       throw new Error('FaceAntiSpoof module not available on this platform');
     }
-    
+
+    // Initialize the Nitro plugin (v5)
+    if (_faceAntiSpoofPlugin && typeof _faceAntiSpoofPlugin.initialize === 'function') {
+      _faceAntiSpoofPlugin.initialize();
+    }
+
     const result = await FaceAntiSpoof.initialize();
     const status = await FaceAntiSpoof.checkModelStatus();
 
     if (!result || !status) {
       throw new Error('Initialization returned empty result');
-    }
-
-    try {
-      if (typeof FaceAntiSpoof.install === 'function') {
-        await FaceAntiSpoof.install();
-      }
-    } catch (e) {
-      console.warn('[FaceAntiSpoof] install() failed:', e);
     }
 
     const isSuccess = result && status.pluginAvailable;

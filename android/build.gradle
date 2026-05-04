@@ -19,6 +19,7 @@ buildscript {
 
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
+apply from: '../nitrogen/generated/android/FaceAntiSpoofDetector+autolinking.gradle'
 
 android {
     compileSdkVersion rootProject.ext.compileSdkVersion
@@ -130,9 +131,11 @@ dependencies {
     // AndroidX - EXIF Support for image orientation
     implementation "androidx.exifinterface:exifinterface:1.3.6"
 
-    // Vision Camera + Worklets
+    // Vision Camera v5 (Nitro Modules)
     implementation project(':react-native-vision-camera')
-    implementation project(':react-native-worklets-core')
+
+    // Nitro Modules (required for HybridObject)
+    implementation project(':react-native-nitro-modules')
 
     // Optional: Face Detector if needed
     implementation project(':react-native-vision-camera-face-detector')
