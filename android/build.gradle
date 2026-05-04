@@ -137,6 +137,4 @@ dependencies {
     // Nitro Modules (required for HybridObject)
     implementation project(':react-native-nitro-modules')
 
-    // Optional: Face Detector if needed
-    implementation project(':react-native-vision-camera-face-detector')
 }

@@ -70,9 +70,6 @@
   "peerDependenciesMeta": {
     "react-native-reanimated": {
       "optional": true
-    },
-    "react-native-vision-camera-face-detector": {
-      "optional": true
     }
   },
   "devDependencies": {
