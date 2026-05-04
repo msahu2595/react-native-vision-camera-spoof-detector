@@ -51,7 +51,8 @@ find_library(log-lib log)
 target_link_libraries(FaceAntiSpoofDetector PRIVATE ${log-lib})
 
 # Nitrogen autolinking - includes generated C++ sources, headers, and links Nitro/FBJNI/ReactAndroid
-get_filename_component(NITROGEN_DIR "${CMAKE_SOURCE_DIR}/../../../nitrogen/generated/android" ABSOLUTE)
+# CMAKE_SOURCE_DIR is android/src/main/cpp/, so go up 4 levels to repo root where nitrogen/ lives
+get_filename_component(NITROGEN_DIR "${CMAKE_SOURCE_DIR}/../../../../nitrogen/generated/android" ABSOLUTE)
 if (EXISTS ${NITROGEN_DIR}/FaceAntiSpoofDetector+autolinking.cmake)
     include(${NITROGEN_DIR}/FaceAntiSpoofDetector+autolinking.cmake)
 else()
